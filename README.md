@@ -163,8 +163,6 @@ No hardcoded paths or schema names exist in transformation logic.
 
 ---
 
----
-
 ## ⚙ Execution Environment
 
 This project is designed to run within a Databricks environment where a Spark session is already available.
