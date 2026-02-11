@@ -1,0 +1,21 @@
+environment: dev
+
+paths:
+  raw_base_path: "/Volumes/olist/raw"
+
+schemas:
+  bronze: "olist.bronze"
+  silver: "olist.silver"
+  gold: "olist.gold"
+
+tables:
+  customers: "customers"
+  orders: "orders"
+  order_items: "order_items"
+  products: "products"
+
+gold_tables:
+  dim_customers: "dim_customers"
+  dim_products: "dim_products"
+  fact_sales: "fact_sales"
+  fact_sales_rejects: "fact_sales_rejects"
