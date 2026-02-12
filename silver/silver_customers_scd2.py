@@ -91,16 +91,13 @@ if not table_exists:
             .mode("overwrite")
             .saveAsTable(SILVER_TABLE)
     )
+else:
 
-# On the first run, I load the entire dataset.
-# Subsequent runs use MERGE for idempotency.
+    # Incremental load with SCD Type 2 logic (2 parts)
+    # Step 1: Expire existing current records when attributes change
+    # Step 2: Insert new versions for new or changed records        
 
-
-
-# Incremental load with SCD Type 2 logic (2 parts)
-# Part 1 - If changed data comes then EXPIRE 
-
-if table_exists:
+    # Step-1
     delta_table = DeltaTable.forName(spark, SILVER_TABLE)
 
     # join condition on business key
@@ -129,35 +126,30 @@ if table_exists:
         .execute()
     )
 
-# Only expires old versions
-# Does not insert anything
-# History is preserved
+    # Step -2
+    
+    current_silver_df = spark.table(SILVER_TABLE).where("is_current = true")
 
-
-
-# Find customers that need new rows (new OR changed)
-# Part - 2 this is the 2nd part where we insert other part
-
-current_silver_df = spark.table(SILVER_TABLE).where("is_current = true")
-
-new_version_df = (
-    incoming_clean_df.alias("source")
-    .join(
-        current_silver_df.alias("target"),
-        on="customer_id",
-        how="left"
+    new_version_df = (
+        incoming_clean_df.alias("source")
+        .join(
+            current_silver_df.alias("target"),
+            on="customer_id",
+            how="left"
+        )
+        .where(
+            col("target.customer_id").isNull() |
+            (col("source.customer_city") != col("target.customer_city")) |
+            (col("source.customer_state") != col("target.customer_state"))
+        )
+        .select("source.*")
     )
-    .where(
-        col("target.customer_id").isNull() |
-        (col("source.customer_city") != col("target.customer_city")) |
-        (col("source.customer_state") != col("target.customer_state"))
-    )
-    .select("source.*")
-)
 
 # For a new row the customer_id will be NULL for a left join
 # For an updated row the state or city needs to be updated, so we are INSERTing a new row
 
+# On the first run, I load the entire dataset.
+# Subsequent runs use MERGE for idempotency.
 
 
 # Add the newly found data or updated ones in the SILVER table
@@ -170,7 +162,7 @@ new_version_df = (
 )
 
 
-
+# Sanity check
 (
     spark.table(SILVER_TABLE)
          .where(col("is_current") == True)
