@@ -138,9 +138,7 @@ else:
             how="left"
         )
         .where(
-            col("target.customer_id").isNull() |
-            (col("source.customer_city") != col("target.customer_city")) |
-            (col("source.customer_state") != col("target.customer_state"))
+            col("target.customer_id").isNull()
         )
         .select("source.*")
     )
