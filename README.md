@@ -48,7 +48,7 @@ Data lineage is traceable across all layers using Unity Catalog, enabling:
 - Impact analysis  
 - Data governance visibility  
 
-<img src="architecture/lineage_view.png" width="300" alt="Data Lineage">
+<img src="architecture/lineage_view.png" width="500" alt="Data Lineage">
 
 ---
 
