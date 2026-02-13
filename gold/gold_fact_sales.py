@@ -89,6 +89,7 @@ fact_sales_df = (
             col("freight_value"),
             current_timestamp().alias("ingestion_ts")
         )
+        .dropDuplicates(["order_id", "order_item_id"])
 )
 
 

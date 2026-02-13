@@ -1,5 +1,5 @@
 # Olist Lakehouse Project  
-**Medallion Architecture with CDC, SCD Type 2, and Incremental Processing**
+**Production-style Medallion Lakehouse implemented with CDC, SCD Type 2, and Incremental Processing using Databricks, Delta Lake, and PySpark with orchestration via Databricks Jobs.**
 
 ---
 
@@ -19,9 +19,36 @@ The dataset represents an e-commerce domain consisting of customers, orders, ord
 
 ---
 
-## 🏗 Architecture
+## 🏗️ Architecture Overview
 
-![Architecture Diagram](./diagrams/olist_lakehouse_architecture.png)
+The project follows a Medallion (Bronze–Silver–Gold) Lakehouse architecture implemented using Databricks and Delta Lake.
+
+![Lakehouse Architecture](architecture/olist_lakehouse_architecture.png)
+
+---
+
+## 🔄 Pipeline Orchestration (Databricks Jobs)
+
+The entire pipeline is orchestrated using Databricks Jobs, with task-level dependency management reflecting upstream and downstream data lineage across Bronze, Silver, and Gold layers.
+
+- Parallel Bronze ingestion  
+- Layer-based task dependencies  
+- Retry configuration for failure resilience 
+- Fact grain uniqueness is enforced prior to MERGE to prevent ambiguous Delta updates.
+
+![Databricks Job DAG](architecture/databricks_job_dag.png)
+
+---
+
+## 🔍 Data Lineage (Unity Catalog)
+
+Data lineage is traceable across all layers using Unity Catalog, enabling:
+
+- Upstream/downstream dependency tracking  
+- Impact analysis  
+- Data governance visibility  
+
+![Data Lineage](architecture/lineage_view.png)
 
 ---
 
@@ -127,21 +154,37 @@ This prevents hard-coded values inside transformation scripts and improves maint
 
 ---
 
-## 📁 Project Structure
+## 📂 Project Structure
 
-```
-olist-lakehouse/
+```text
+olist_lakehouse/
 │
-├── bronze/
-├── silver/
-├── gold/
-├── config/
-│   └── config.yaml
-├── diagrams/
-│   └── olist_lakehouse_architecture.png
-├── README.md
+├── architecture/                 # Visual documentation
+│   ├── olist_lakehouse_architecture.png
+│   ├── databricks_job_dag.png
+│   └── lineage_view.png
+│
+├── bronze/                       # Raw ingestion layer (append-only)
+│   ├── bronze_customers.py
+│   ├── bronze_orders.py
+│   ├── bronze_products.py
+│   └── bronze_order_items.py
+│
+├── silver/                       # Business logic layer
+│   ├── silver_orders_cdc.py      # CDC Type 1 (MERGE-based updates)
+│   └── silver_customers_scd2.py  # SCD Type 2 implementation
+│
+├── gold/                         # Analytics layer (Star Schema)
+│   ├── gold_dim_customers.py
+│   ├── gold_dim_products.py
+│   └── gold_fact_sales.py
+│
+├── config/                       # Centralized configuration
+│   ├── config.yaml
+│   └── config_loader.py
+│
 ├── requirements.txt
-└── .gitignore
+└── README.md
 ```
 
 ---
@@ -153,6 +196,7 @@ olist-lakehouse/
 - Delta Lake  
 - Medallion Architecture  
 - Star Schema Modeling  
+- Databricks Jobs (Workflow Orchestration)
 
 ---
 
@@ -183,7 +227,7 @@ This repository focuses on architectural clarity and production-oriented design 
 
 - Cloud-based incremental ingestion with folder-level detection  
 - Partitioning and performance optimization  
-- Automated orchestration (Airflow / Workflows)  
+- Extended orchestration via Airflow (future scope) 
 - Data validation framework  
 
 ---
