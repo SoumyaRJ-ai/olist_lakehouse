@@ -31,10 +31,10 @@ The project follows a Medallion (Bronze–Silver–Gold) Lakehouse architecture 
 
 The entire pipeline is orchestrated using Databricks Jobs, with task-level dependency management reflecting upstream and downstream data lineage across Bronze, Silver, and Gold layers.
 
-- Parallel Bronze ingestion  
-- Layer-based task dependencies  
+- Parallel Bronze ingestion
+- Layer-based task dependencies
 - Retry configuration for failure resilience 
-- Fact grain uniqueness is enforced prior to MERGE to prevent ambiguous Delta updates.
+- Fact grain uniqueness is enforced prior to MERGE to prevent ambiguous Delta updates
 
 ![Databricks Job DAG](architecture/databricks_job_dag.png)
 
