@@ -227,7 +227,10 @@ This repository focuses on architectural clarity and production-oriented design 
 
 ## 🚀 Future Enhancements
 
-- Cloud-based incremental ingestion with folder-level detection  
+- Cloud-based incremental ingestion with folder-level detection
+- Incremental Fact Processing with watermark-based incremental loading in the Gold layer
+- Temporal SCD2 Joins linking facts to the correct historical dimension
+- Conditional update logic in Delta MERGE statements in Gold
 - Partitioning and performance optimization  
 - Extended orchestration via Airflow (future scope) 
 - Data validation framework  
