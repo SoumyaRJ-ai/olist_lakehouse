@@ -71,6 +71,7 @@ customers_bronze_df = (
         .write
         .format("delta")
         .mode("append")
+        .option("mergeSchema", "true")
         .saveAsTable(BRONZE_TABLE)
 )
 
