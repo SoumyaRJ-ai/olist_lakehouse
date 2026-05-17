@@ -5,7 +5,7 @@
 
 ## 📌 Overview
 
-This project demonstrates the design and implementation of a production-shaped Data Lakehouse using the Medallion Architecture (Bronze → Silver → Gold) on Databricks.
+This project demonstrates the design and implementation of a production-shaped Data Lakehouse using the Medallion Architecture (Bronze → Silver → Gold) on Databricks. This entire pipeline is designed using the Free version of Databricks so ingestion is directly performed inside Databricks Volumes but this pipeline also aligned for production architectures where Azure Data Factory can orchestrate ingestion into ADLS/Databricks Volume.
 
 The objective is not just to ingest data, but to design a pipeline that is:
 
