@@ -102,10 +102,12 @@ Products and order_items are treated as immutable in this implementation.
 - `dim_products` (Type 1)  
 
 ### Fact
-- `fact_sales`  
-- Grain: `(order_id, order_item_id)`  
-- Surrogate keys: `customer_sk`, `product_sk`  
-- MERGE-based incremental load  
+- fact_sales
+- Grain: (order_id, order_item_id)
+- Surrogate keys: customer_sk, product_sk
+- Watermark-based incremental processing
+- Temporal joins to SCD Type 2 customer dimension
+- Conditional Delta MERGE updates
 
 ### Data Quality
 - `fact_sales_rejects` captures invalid or filtered records  
@@ -119,10 +121,11 @@ Gold enforces a clear separation between descriptive attributes (dimensions) and
 
 The pipeline is designed to be safely re-runnable.
 
-- Bronze: Append-only ingestion  
-- Silver Orders: MERGE-based CDC  
-- Silver Customers: Two-step SCD Type 2 implementation  
-- Gold Fact: MERGE on composite grain  
+- Bronze: Append-only ingestion
+- Silver Orders: CDC-style MERGE processing
+- Silver Customers: SCD Type 2 history tracking
+- Gold Dimensions: Incremental surrogate key maintenance
+- Gold Fact: Watermark-based processing with conditional Delta MERGE
 
 All transformations are idempotent and support incremental updates.
 
@@ -135,6 +138,16 @@ All transformations are idempotent and support incremental updates.
 - Strict fact grain definition  
 - Surrogate key usage in dimensions  
 - Explicit reject handling for data quality transparency  
+
+---
+
+## ⚡ Performance & Scalability
+
+- Incremental processing using watermark-based filtering
+- Change-driven processing to avoid historical recomputation
+- Conditional Delta MERGE updates to reduce unnecessary rewrites
+- Stable surrogate key management for SCD Type 2 dimensions
+- Fact grain uniqueness validation before MERGE execution
 
 ---
 
@@ -227,13 +240,12 @@ This repository focuses on architectural clarity and production-oriented design 
 
 ## 🚀 Future Enhancements
 
-- Cloud-based incremental ingestion with folder-level detection
-- Incremental Fact Processing with watermark-based incremental loading in the Gold layer
-- Temporal SCD2 Joins linking facts to the correct historical dimension
-- Conditional update logic in Delta MERGE statements in Gold
-- Partitioning and performance optimization  
-- Extended orchestration via Airflow (future scope) 
-- Data validation framework  
+- Metadata-based surrogate key allocator
+- Delta Change Data Feed (CDF) integration
+- CDC-driven ingestion from source systems
+- Partitioning and performance optimization
+- Airflow-based orchestration
+- Data validation framework
 
 ---
 
@@ -252,7 +264,7 @@ This repository focuses on architectural clarity and production-oriented design 
 This project demonstrates how backend engineering rigor can be applied to modern data engineering:
 
 - Deterministic behavior  
-- Explicit state management (CDC & SCD2)  
+- Explicit state management (CDC, SCD Type 2, and temporal joins)
 - Controlled schema modeling  
 - Transparent data quality handling  
 

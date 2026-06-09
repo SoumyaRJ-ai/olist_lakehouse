@@ -27,7 +27,7 @@ table_orders = config['tables']['orders']
 
 
 
-from pyspark.sql.functions import col, trim, to_timestamp, current_timestamp
+from pyspark.sql.functions import col, trim, current_timestamp
 from pyspark.sql.types import StringType, TimestampType
 from delta.tables import DeltaTable
 
