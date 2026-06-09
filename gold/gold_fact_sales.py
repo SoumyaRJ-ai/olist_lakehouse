@@ -28,7 +28,7 @@ gold_table_dim_products = config['gold_tables']['dim_products']
 
 
 
-from pyspark.sql.functions import col, current_timestamp
+from pyspark.sql.functions import col, current_timestamp, max as spark_max
 from pyspark.sql.types import DoubleType
 from delta.tables import DeltaTable
 
@@ -48,10 +48,7 @@ GOLD_DIM_PRODUCTS      = f"{gold_schema}.{gold_table_dim_products}"
 # Read source tables
 
 orders_df = spark.table(SILVER_ORDERS_TABLE)
-customers_dim_df = (
-    spark.table(GOLD_DIM_CUSTOMERS)
-         .where(col("is_current") == True)
-)
+customers_dim_df = spark.table(GOLD_DIM_CUSTOMERS)
 products_dim_df = spark.table(GOLD_DIM_PRODUCTS)
 order_items_df = spark.table(BRONZE_ORDER_ITEMS)
 
@@ -69,14 +66,64 @@ order_items_cleaned_df = (
     .withColumn("price", col("price").cast(DoubleType()))
 )
 
+table_exists = spark.catalog.tableExists(GOLD_FACT_TABLE)
+
+last_processed_ts = None
+
+if table_exists:
+    last_processed_ts = (
+        spark.table(GOLD_FACT_TABLE)
+        .select(
+            spark_max("last_updated_ts")
+            .alias("max_ts")
+        )
+        .first()["max_ts"]
+    )
+
+if last_processed_ts is not None:
+    orders_df = (
+        orders_df
+        .filter(
+            col("last_updated_ts")
+            >
+            last_processed_ts
+        )
+    )
+    changed_order_ids_df = (
+        orders_df
+        .select("order_id")
+        .distinct()
+    )
+    order_items_cleaned_df = (
+        order_items_cleaned_df
+        .join(
+            changed_order_ids_df,
+            "order_id",
+            "inner"
+        )
+    )
 
 
 # Join with customers (inner join ensures valid customer mapping)
 
 fact_sales_df = (
     order_items_cleaned_df
-        .join(orders_df, on="order_id", how="inner")
-        .join(customers_dim_df, on="customer_id", how="inner")
+        .join(orders_df.alias("o"), on="order_id", how="inner")
+        .join(
+            customers_dim_df.alias("c"),
+            (
+                col("o.customer_id") == col("c.customer_id")
+            )
+            &
+            (
+                col("o.order_purchase_timestamp") >= col("c.effective_from")
+            )
+            &
+            (
+                col("o.order_purchase_timestamp") < col("c.effective_to")
+            ), 
+            "inner"
+        )
         .join(products_dim_df, on="product_id", how="inner")
         .select(
             col("order_id"),
@@ -85,6 +132,7 @@ fact_sales_df = (
             col("product_sk"),
             col("order_status"),
             col("order_purchase_timestamp").alias("order_ts"),
+            col("last_updated_ts"),
             col("price"),
             col("freight_value"),
             current_timestamp().alias("ingestion_ts")
@@ -93,12 +141,7 @@ fact_sales_df = (
 )
 
 
-
-table_exists = spark.catalog.tableExists(GOLD_FACT_TABLE)
-
-
-
-# Write Gold fact table (overwrite for simplicity)
+# Write Gold fact table
 
 if not table_exists:
     (
@@ -109,20 +152,11 @@ if not table_exists:
             .saveAsTable(GOLD_FACT_TABLE)
     )
 
-
-
-# Basic validation
-
-spark.table(GOLD_FACT_TABLE).count()
-
-
-
-
 ### Incremental logic starts
 
 
-
-if table_exists:
+has_new_records = len(fact_sales_df.take(1)) > 0
+if table_exists and has_new_records:
   delta_table = DeltaTable.forName(spark, GOLD_FACT_TABLE)
 
   (
@@ -134,28 +168,32 @@ if table_exists:
         AND target.order_item_id = source.order_item_id
       """
     )
-    .whenMatchedUpdateAll()
+    .whenMatchedUpdate(
+      condition="""
+        target.order_status <> source.order_status
+        OR target.price <> source.price
+        OR target.freight_value <> source.freight_value
+      """,
+      set={
+          "order_status": "source.order_status",
+          "price": "source.price",
+          "freight_value": "source.freight_value",
+          "customer_sk": "source.customer_sk",
+          "product_sk": "source.product_sk",
+          "order_ts": "source.order_ts",
+          "ingestion_ts": "source.ingestion_ts",
+          "last_updated_ts": "source.last_updated_ts"
+        } 
+    )
     .whenNotMatchedInsertAll()
     .execute()
   )
 
-  # When conditions match, Update all
+  # When conditions match, merge with updated conditions
   # When conditions don't match i.e. new comers, Insert all
 
 
-
-# Sanity Validation
-
-spark.table(GOLD_FACT_TABLE) \
-     .groupBy("order_id", "order_item_id") \
-     .count() \
-     .where(col("count") > 1).show()
-
-
-
-
 ### Capture rejected order_items
-
 
 
 GOLD_REJECT_TABLE = "olist.gold.fact_sales_rejects"
